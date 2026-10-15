@@ -11,6 +11,22 @@ jobs:
       - name: Baixar repositório
         uses: actions/checkout@v4
 
+      - name: Encontrar e extrair projeto
+        run: |
+          ZIP=$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "Arquivo ZIP não encontrado na raiz."
+            exit 1
+          fi
+          mkdir projeto
+          unzip "$ZIP" -d projeto
+          ROOT=$(find projeto -name settings.gradle -o -name settings.gradle.kts | head -n 1)
+          if [ -z "$ROOT" ]; then
+            echo "Não foi encontrado settings.gradle no ZIP."
+            exit 1
+          fi
+          echo "PROJECT_DIR=$(dirname "$ROOT")" >> "$GITHUB_ENV"
+
       - name: Preparar Java
         uses: actions/setup-java@v4
         with:
@@ -21,12 +37,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Compilar APK
-        run: gradle assembleDebug
+        run: |
+          cd "$PROJECT_DIR"
+          gradle assembleDebug
 
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
           name: CS-GHOST-SENSI-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: projeto/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           
